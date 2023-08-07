@@ -20,8 +20,6 @@ public class BallController : MonoBehaviour
         {
             instance = this;
         }
-        rb = GetComponent<Rigidbody2D>();
-        collider2D = GetComponent<BoxCollider2D>();
     }
     private void Start()
     {
@@ -30,7 +28,9 @@ public class BallController : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        rb.velocity = new Vector2(-rb.velocity.x, rb.velocity.y);
+        
+        if(collision.CompareTag("block"))
+            rb.velocity = new Vector2(-rb.velocity.x, rb.velocity.y);
 
     }
 }
