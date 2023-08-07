@@ -12,8 +12,9 @@ public class NoteSpawner : MonoBehaviour
 {
     private IObjectPool<NoteBehavior> notePool;
     public int amountToPool;
-    public NoteBehavior noteBehaviorPrefab;
+    [SerializeField] private NoteBehavior noteBehaviorPrefab;
 
+    private Vector2 extraSize;
     //private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "GravityFalls.mid");
     private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "AllFallDown.mid");
     //private string fileName = "AllFallDown.mid";
@@ -49,7 +50,14 @@ public class NoteSpawner : MonoBehaviour
         canSpawn = true;
         currentNote = 0;
         ballVelocity = BallController.instance.rb.velocity;
-        lastNotePosition = BallController.instance.rb.position + ballVelocity * 5.0f;
+
+
+        Vector2 noteSize = noteBehaviorPrefab.GetComponent<BoxCollider2D>().size;
+       Vector2 ballSize = BallController.instance.GetComponent<BoxCollider2D>().size;
+
+        extraSize = (ballSize + noteSize) / 2;
+        Debug.Log(extraSize);
+        lastNotePosition = BallController.instance.rb.position + ballVelocity * 5.0f + new Vector2( 0, extraSize.y);
 
         lastNoteTime = 0;
         isOddNote = true;
@@ -72,8 +80,6 @@ public class NoteSpawner : MonoBehaviour
                     double metricTime = noteData.note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
 
                     musicnote.SetNote(noteOnEvent, noteOffEvent, metricTime);
-
-
 
                     lastNotePosition = lastNotePosition + new Vector3(ballVelocity.x * (isOddNote ? 1 : -1), ballVelocity.y, 0) * (noteData.startTime - lastNoteTime);
                     isOddNote = !isOddNote;
