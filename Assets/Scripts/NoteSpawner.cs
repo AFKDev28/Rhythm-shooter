@@ -4,19 +4,22 @@ using UnityEngine;
 using UnityEngine.Pool;
 using Melanchall.DryWetMidi.Interaction;
 using Melanchall.DryWetMidi.Core;
-using System.Linq;
 using Unity.Mathematics;
 using Melanchall.DryWetMidi.Common;
+using Random = UnityEngine.Random;
+using System.Collections.ObjectModel;
 
 public class NoteSpawner : MonoBehaviour
 {
-    private IObjectPool<NoteBehavior> notePool;
-    public int amountToPool;
-    [SerializeField] private NoteBehavior noteBehaviorPrefab;
+    private IObjectPool<NoteBehavior> blNotePool;
+    [SerializeField] private NoteBehavior blNotePrefab;
 
-    private Vector2 extraSize;
-    //private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "GravityFalls.mid");
+    private IObjectPool<NoteBehavior> flNotePool;
+    [SerializeField] private NoteBehavior flNotePrefab;
+
+
     private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "AllFallDown.mid");
+    //private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "AllFallDown.mid");
     //private string fileName = "AllFallDown.mid";
 
     TempoMap tempoMap;
@@ -33,32 +36,54 @@ public class NoteSpawner : MonoBehaviour
     private bool isOddNote;
     private Vector2 offSet;
     private int repeatTime;
+    BlockingNoteBehavior musicnote = null;
 
+    private float floatnoteOffset;
     void Start()
     {
-        notePool = new ObjectPool<NoteBehavior>(() =>
+        blNotePool = new ObjectPool<NoteBehavior>(() =>
         {
-            return Instantiate(noteBehaviorPrefab);
-        }, note => note.gameObject.SetActive(true)
+            NoteBehavior note = Instantiate(blNotePrefab);
+            note.InIt(KillNote);
+            return note;
+        }
+            , note => note.gameObject.SetActive(true)
         , note => note.gameObject.SetActive(false)
         , note => Destroy(note.gameObject)
         , false, 50);
+
+        flNotePool = new ObjectPool<NoteBehavior>(() =>
+        {
+            NoteBehavior note = Instantiate(flNotePrefab);
+            note.InIt(KillNote);
+
+            return note;
+        }
+            , note => note.gameObject.SetActive(true)
+            , note => note.gameObject.SetActive(false)
+            , note => Destroy(note.gameObject)
+            , false, 50);
+
         LoadDataFromMidiFile();
     }
 
     private void StartSpawn()
     {
         //reset atribute
-        startTime = Time.time - 5.0f;
+        startTime = Time.time - 3.0f;
         canSpawn = true;
         currentNote = 0;
         ballVelocity = BallController.instance.rb.velocity;
         repeatTime = 0;
         //get the size of note and block
-        Vector2 noteSize = noteBehaviorPrefab.GetComponent<BoxCollider2D>().size;
+        Vector2 noteSize = blNotePrefab.GetComponent<BoxCollider2D>().size;
         Vector2 ballSize = BallController.instance.GetComponent<BoxCollider2D>().size;
+       float floatnoteSize = flNotePrefab.GetComponent<CircleCollider2D>().radius; 
         offSet = new Vector2((ballSize.x + noteSize.x) / 2, ballSize.y);
-        lastBallPosition = BallController.instance.rb.position + ballVelocity * 5.0f;
+
+        floatnoteOffset = BulletController.raycastLength + floatnoteSize;
+
+        lastBallPosition = BallController.instance.rb.position + ballVelocity * 3.0f;
 
 
         lastNoteTime = -1;
@@ -68,16 +93,80 @@ public class NoteSpawner : MonoBehaviour
     {
         if (canSpawn)
         {
-            while (currentNote < notes.Count && notes[currentNote].startTime < Time.time - startTime  )
-            {
-                if (notes[currentNote].type == NoteType.StaticBlock)
-                {
-                    // get note from pool
+            SpawnNotes();
+        }
+        else if (Input.GetMouseButtonDown(0))
+        {
+            StartSpawn();
+        }
+    }
 
+    private void SpawnNotes()
+    {
+        while (currentNote < notes.Count && notes[currentNote].startTime < Time.time - startTime)
+        {
+            if (notes[currentNote].type == NoteType.StaticBlock)
+            {
+                // get note from pool
+
+                NoteData noteData = notes[currentNote];
+                
+                musicnote = (BlockingNoteBehavior)blNotePool.Get();
+                //set NoteOnEvent, NoteOff Event and playtime for note
+                float NoteOnVolume = (int)noteData.note.Velocity * noteVolume;
+                float NoteOffVolume = (int)noteData.note.OffVelocity * noteVolume;
+                NoteOnEvent noteOnEvent = new NoteOnEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOnVolume));
+                NoteOffEvent noteOffEvent = new NoteOffEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOffVolume));
+                double playTime = noteData.note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
+
+                musicnote.SetNote(noteOnEvent, noteOffEvent, playTime);
+
+                // Set Position for note
+                Vector3 noteOffSet = Vector3.zero;
+                if (lastNoteTime != noteData.startTime)
+                {
+                    musicnote.transform.tag = "block";
+
+                    isOddNote = !isOddNote;
+                    lastBallPosition += new Vector3(ballVelocity.x * (isOddNote ? 1 : -1), ballVelocity.y, 0) * (noteData.startTime - lastNoteTime);
+                }
+                else
+                {
+                    musicnote.transform.tag = "blockduplicated";
+                }
+
+
+                // caculates offset X
+
+                noteOffSet.x = offSet.x * (isOddNote ? 1 : -1);
+
+                // caculates offset Y
+                int nextnote = currentNote;
+                while (nextnote < notes.Count)
+                {
+                    if(notes[nextnote].startTime != noteData.startTime && notes[nextnote].type == NoteType.StaticBlock)
+                    {
+                        noteOffSet.y = -ballVelocity.y * (notes[nextnote].startTime - noteData.startTime) + offSet.y;
+                        noteOffSet.y = Mathf.Clamp(noteOffSet.y, 0, offSet.y);
+                        break;
+                    }
+                    nextnote++;
+                    
+                }
+
+                musicnote.SetExpectedPosition(lastBallPosition);
+                musicnote.transform.position = lastBallPosition + noteOffSet;
+
+                lastNoteTime = noteData.startTime;
+            }
+
+            else if (notes[currentNote].type == NoteType.other) 
+            {
+                if (musicnote != null)
+                {
                     NoteData noteData = notes[currentNote];
 
-                    NoteBehavior musicnote = notePool.Get();
-
+                    NoteBehavior floatingmusicnote = flNotePool.Get();
                     //set NoteOnEvent, NoteOff Event and playtime for note
                     float NoteOnVolume = (int)noteData.note.Velocity * noteVolume;
                     float NoteOffVolume = (int)noteData.note.OffVelocity * noteVolume;
@@ -85,75 +174,31 @@ public class NoteSpawner : MonoBehaviour
                     NoteOffEvent noteOffEvent = new NoteOffEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOffVolume));
                     double playTime = noteData.note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
 
-                    musicnote.SetNote(noteOnEvent, noteOffEvent, playTime);
+                    floatingmusicnote.SetNote(noteOnEvent, noteOffEvent, playTime);
 
                     // Set Position for note
+                    float x = (isOddNote ? 1 : -1) * Random.Range(0.0f, 1.0f),
+                        y = Random.Range(-1.0f, 1.0f);
+                    Vector3 random = new Vector3((isOddNote ? 1 : -1) * Random.Range(0.0f, 1.0f),
+                        y = Random.Range(-1.0f, 1.0f), 0).normalized;
+                    floatingmusicnote.transform.position = musicnote.transform.position
+                        + random * ((noteData.startTime - lastNoteTime) * BulletController.movSpeed + floatnoteOffset);
 
-
-                    Vector3 noteOffSet = Vector3.zero;
-                    if (lastNoteTime != noteData.startTime)
-                    {
-                        isOddNote = !isOddNote;
-                        lastBallPosition += new Vector3(ballVelocity.x * (isOddNote ? 1 : -1), ballVelocity.y, 0) * (noteData.startTime - lastNoteTime);
-                    }
-                    else
-                    {
-                        musicnote.transform.tag = "blockduplicated";
-                    }
-
-
-                    // caculates offset X
-
-                    noteOffSet.x = offSet.x * (isOddNote ? 1 : -1);
-                    
-                    // caculates offset Y
-                    int nextnote = currentNote;
-                    while ((nextnote < notes.Count) && (notes[nextnote].startTime == noteData.startTime || notes[nextnote].type != NoteType.StaticBlock))
-                    {
-                        nextnote++;
-                    }
-
-                    
-
-                    if (nextnote < notes.Count)
-                    {
-
-                        noteOffSet.y =  - ballVelocity.y * (notes[nextnote].startTime - noteData.startTime) + offSet.y;
-                        noteOffSet.y = Mathf.Clamp(noteOffSet.y, 0, offSet.y);
-                        Debug.Log(noteOffSet.y);
-                    }
-
-                    musicnote.SetExpectedPosition(lastBallPosition);
-                    musicnote.transform.position = lastBallPosition + noteOffSet;
-
-
-                    lastNoteTime = noteData.startTime;
-
+                    musicnote.AddFloatingNote(floatingmusicnote.transform.position);
                 }
-
-                else
-                {
-
-                }
-                currentNote++;
-
-
             }
+            currentNote++;
         }
-        else if (Input.GetMouseButtonDown(0))
-        {
-            StartSpawn();
-        }
-
-        
     }
 
+   
     private void LoadDataFromMidiFile()
     {
         MidiFile midiFile = MIDIManager.instance.GetMIDIFromFile(midiFilePath);
         tempoMap = midiFile.GetTempoMap();
         bool isFirstTrackTruck = true;
-        notes = new List<NoteData>();
+        notes  = new List<NoteData>();
+        notes.Clear();
         foreach (var tracktruck in midiFile.GetTrackChunks())
         {
             foreach (var note in tracktruck.GetNotes())
@@ -169,16 +214,19 @@ public class NoteSpawner : MonoBehaviour
                     notes.Add(new NoteData(NoteType.other, note, totalTime));
                 }
             }
-            notes.OrderBy(x => x.startTime);
-            
+
             isFirstTrackTruck = false;
         }
+        notes.Sort((x, y) => x.startTime.CompareTo(y.startTime));
     }
 
 
     private void KillNote(NoteBehavior note)
     {
-        Destroy(note.gameObject);
+        if(note.CompareTag("floatnote"))
+            flNotePool.Release(note);
+        else blNotePool.Release(note);
+
     }
 }
 
@@ -189,8 +237,8 @@ public enum NoteType
 }
 
 public struct NoteData
-{   
-    public NoteType type;   
+{
+    public NoteType type;
     public Note note;
     public float startTime;
 

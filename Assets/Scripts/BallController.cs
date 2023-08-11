@@ -23,7 +23,7 @@ public class BallController : MonoBehaviour
     }
     private void Start()
     {
-        rb.velocity = new Vector2(10, 10);
+        rb.velocity = new Vector2(4, 4);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

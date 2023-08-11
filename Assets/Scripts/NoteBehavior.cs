@@ -1,47 +1,54 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using Melanchall.DryWetMidi.Core;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class NoteBehavior : MonoBehaviour
 {
+    protected Action<NoteBehavior> _killAction;
+
     NoteOnEvent noteOnEvent;
     NoteOffEvent noteOffEvent;
-    private double timeOff;
-    private Vector3 expectedPosition;
+    protected double timeOff;
 
-    private Collider2D collider;
-    public void SetNote(NoteOnEvent noteOnEvent, NoteOffEvent noteOffEvent , double timeOff)
+    protected bool isPlayed = false;
+
+    [SerializeField] protected List<Sprite> sprites;
+
+    protected Collider2D collider;
+    protected SpriteRenderer spriteRenderer;
+
+
+    private void Awake()
     {
+        collider = GetComponent<Collider2D>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+    public void InIt(Action<NoteBehavior> killAction)
+    {
+        _killAction = killAction;
+    }
+    public virtual void SetNote(NoteOnEvent noteOnEvent, NoteOffEvent noteOffEvent, double timeOff)
+    {
+        isPlayed = false;
         this.noteOnEvent = noteOnEvent;
         this.noteOffEvent = noteOffEvent;
         this.timeOff = timeOff;
-    }
-    private void Start()
-    {
-        collider = GetComponent<Collider2D>();
-    }
-    public void SetExpectedPosition(Vector3 expectedPosition)
-    {
-        this.expectedPosition = expectedPosition;
+        spriteRenderer.sprite = sprites[Random.Range(0, sprites.Count - 1)];
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        StartCoroutine(PlayNote());
-        if(transform.CompareTag("block"))
-        {
-            collision.transform.position = expectedPosition;
-        }
-        collider.enabled = false;
-    }
 
-    private IEnumerator PlayNote()
+    protected IEnumerator PlayNote()
     {
         MIDIManager.instance.NoteOn(noteOnEvent);
         yield return new WaitForSeconds((float)timeOff);
         MIDIManager.instance.NoteOff(noteOffEvent);
 
         yield return null;
-        Destroy(gameObject,3.0f);
+        _killAction(this);
     }
+
+
 }
