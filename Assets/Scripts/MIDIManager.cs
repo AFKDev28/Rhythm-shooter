@@ -36,15 +36,6 @@ public class MIDIManager : MonoBehaviour
 
     }
 
-    private void Start()
-    {
-        //midiFile = MidiFile.Read(midiFilePath);
-        //ReadNoteFromMIDI();
-
-        //InitializeFilePlayback(midiFile);
-        //StartPlayback();
-
-    }
 
     public MidiFile GetMIDIFromFile(string filePath)
     {
@@ -87,30 +78,6 @@ public class MIDIManager : MonoBehaviour
     }
 
 
-    public void GetDataFromMIDI(string filePath)
-    {
-        //notes = midiFile.GetNotes();
-
-        //foreach (TrackChunk chuck in midiFile.GetTrackChunks())
-        //{
-        //    notes = chuck.GetNotes();
-        //    break;
-        //}
-        //foreach (var note in notes)
-        //{
-        //    string noteName = note.NoteName.ToString();
-        //    int octave = note.Octave;
-        //    long length = note.Length;
-        //    int velocity = note.Velocity;
-        //    Debug.Log(note.Time);
-
-        //    TempoMap tempoMap = midiFile.GetTempoMap();
-        //    double metricTime = note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
-        //    Debug.Log(metricTime);
-        //    BarBeatTicksTimeSpan musicalTime = note.TimeAs<BarBeatTicksTimeSpan>(tempoMap);
-
-        //}
-    }
 
     private void InitializeFilePlayback(MidiFile midiFile)
     {

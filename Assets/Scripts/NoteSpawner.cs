@@ -17,10 +17,7 @@ public class NoteSpawner : MonoBehaviour
     private IObjectPool<NoteBehavior> flNotePool;
     [SerializeField] private NoteBehavior flNotePrefab;
 
-
-    private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "AllFallDown.mid");
-    //private string midiFilePath = Path.Combine(Application.streamingAssetsPath, "AllFallDown.mid");
-    //private string fileName = "AllFallDown.mid";
+    private string midifolder = Application.streamingAssetsPath;
 
     TempoMap tempoMap;
     List<NoteData> notes;
@@ -35,7 +32,6 @@ public class NoteSpawner : MonoBehaviour
     private float lastNoteTime;
     private bool isOddNote;
     private Vector2 offSet;
-    private int repeatTime;
     BlockingNoteBehavior musicnote = null;
 
     private float floatnoteOffset;
@@ -50,7 +46,7 @@ public class NoteSpawner : MonoBehaviour
             , note => note.gameObject.SetActive(true)
         , note => note.gameObject.SetActive(false)
         , note => Destroy(note.gameObject)
-        , false, 50);
+        , true, 50);
 
         flNotePool = new ObjectPool<NoteBehavior>(() =>
         {
@@ -62,9 +58,16 @@ public class NoteSpawner : MonoBehaviour
             , note => note.gameObject.SetActive(true)
             , note => note.gameObject.SetActive(false)
             , note => Destroy(note.gameObject)
-            , false, 50);
+            , true, 50);
 
         LoadDataFromMidiFile();
+
+        string[] path = Directory.GetFiles(midifolder, "*.mid");
+
+        foreach(var path2 in path)
+        {
+            Debug.Log(path2);
+        }
     }
 
     private void StartSpawn()
@@ -74,7 +77,6 @@ public class NoteSpawner : MonoBehaviour
         canSpawn = true;
         currentNote = 0;
         ballVelocity = BallController.instance.rb.velocity;
-        repeatTime = 0;
         //get the size of note and block
         Vector2 noteSize = blNotePrefab.GetComponent<BoxCollider2D>().size;
         Vector2 ballSize = BallController.instance.GetComponent<BoxCollider2D>().size;
@@ -117,8 +119,8 @@ public class NoteSpawner : MonoBehaviour
                 float NoteOffVolume = (int)noteData.note.OffVelocity * noteVolume;
                 NoteOnEvent noteOnEvent = new NoteOnEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOnVolume));
                 NoteOffEvent noteOffEvent = new NoteOffEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOffVolume));
-                double playTime = noteData.note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
-
+                double playTime = noteData.note.LengthAs<MetricTimeSpan>(tempoMap).TotalSeconds;
+                Debug.Log(playTime);
                 musicnote.SetNote(noteOnEvent, noteOffEvent, playTime);
 
                 // Set Position for note
@@ -172,7 +174,7 @@ public class NoteSpawner : MonoBehaviour
                     float NoteOffVolume = (int)noteData.note.OffVelocity * noteVolume;
                     NoteOnEvent noteOnEvent = new NoteOnEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOnVolume));
                     NoteOffEvent noteOffEvent = new NoteOffEvent(noteData.note.NoteNumber, (SevenBitNumber)math.clamp(0, 127, (int)NoteOffVolume));
-                    double playTime = noteData.note.TimeAs<MetricTimeSpan>(tempoMap).TotalSeconds;
+                    double playTime = noteData.note.LengthAs<MetricTimeSpan>(tempoMap).TotalSeconds;
 
                     floatingmusicnote.SetNote(noteOnEvent, noteOffEvent, playTime);
 
@@ -191,13 +193,17 @@ public class NoteSpawner : MonoBehaviour
         }
     }
 
-   
+
     private void LoadDataFromMidiFile()
     {
+
+        string midiFilePath = Path.Combine(Application.streamingAssetsPath, GameManager.Instance.MIDIName);
+
+
         MidiFile midiFile = MIDIManager.instance.GetMIDIFromFile(midiFilePath);
         tempoMap = midiFile.GetTempoMap();
         bool isFirstTrackTruck = true;
-        notes  = new List<NoteData>();
+        notes = new List<NoteData>();
         notes.Clear();
         foreach (var tracktruck in midiFile.GetTrackChunks())
         {
