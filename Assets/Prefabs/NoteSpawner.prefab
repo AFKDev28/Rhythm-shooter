@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8180389435494262909}
   - component: {fileID: 6483923893585917191}
+  - component: {fileID: 5979593452589955153}
   m_Layer: 0
   m_Name: NoteSpawner
   m_TagString: Untagged
@@ -44,6 +45,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58be0264b298ee44eb547c981fe5bf8a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  amountToPool: 100
-  noteBehaviorPrefab: {fileID: 3651897267152990708, guid: eb310556f0b74594392115aa340f2019, type: 3}
+  blNotePrefab: {fileID: 0}
+  flNotePrefab: {fileID: 0}
   noteVolume: 1
+  midiManager: {fileID: 0}
+--- !u!114 &5979593452589955153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6254103462524221034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f903011926573c48b1706cee63e171a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
