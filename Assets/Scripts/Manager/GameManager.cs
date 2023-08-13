@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
     private string midiName;
     private void Awake()
     {
+        Application.targetFrameRate = 60;
         if(Instance != null && Instance != this)
         {
             Destroy(this);
@@ -44,5 +45,11 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1.0f;
 
         SceneManager.LoadScene(0);
+    }
+
+    public void Quit()
+    {
+        Debug.Log("Quitting");
+        Application.Quit(0);
     }
 }

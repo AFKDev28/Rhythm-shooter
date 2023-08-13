@@ -32,7 +32,7 @@ public class MIDIManager : MonoBehaviour
         return midiFile;
     }
 
-    private void OnApplicationQuit()
+    public void RealeaseDevice()
     {
         Debug.Log("Releasing playback and device...");
 
@@ -45,8 +45,8 @@ public class MIDIManager : MonoBehaviour
             _outputDevice.Dispose();
 
         Debug.Log("Playback and device released.");
-    }
 
+    }
 
     private void InitializeOutputDevice()
     {
